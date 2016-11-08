@@ -81,21 +81,27 @@ void Pump::PrintCustomerDetails(CustomerData &cData) const
 	printf("PUMP %d:\n", pumpNumber);
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
-	printf("                                 ");
+	printf("                                       ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
 	printf("Customer Name: %s\n", cData.customerName.c_str());
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
-	printf("                                 ");
+	printf("                                       ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
 	printf("Credit Card: %lld\n", cData.creditCard);
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
+	printf("                                       ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
 	printf("Requested Vol.: %3.1f\n", cData.requestedVolume);
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
+	printf("                                       ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
 	printf("Dispensed Vol.: %3.1f\n", data->dispensedVolume);
 
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
+	printf("                                       ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
 	printf("Fuel Grade: %c\n", (char)('A' + cData.fuelGrade));
 
@@ -105,7 +111,7 @@ void Pump::PrintCustomerDetails(CustomerData &cData) const
 	printf("Cost: $%.2f\n", (DBL_GasCost[cData.fuelGrade] * data->dispensedVolume));
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
-	printf("                                                ");
+	printf("                                 ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
 	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
 
@@ -117,42 +123,28 @@ void Pump::PrintEmptyDetails() const
 {
 	gasStationMutex->Wait();
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
-	printf("                                 ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
-	printf("PUMP %d:\n", pumpNumber);
+	printf("PUMP %d:                         \n", pumpNumber);
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
-	printf("                                 ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
-	printf("Customer Name:\n");
+	printf("Customer Name:                   \n");
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
-	printf("                                 ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
-	printf("Credit Card:\n");
+	printf("Credit Card:                     \n");
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
-	printf("                                 ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
-	printf("Requested Vol.:\n");
+	printf("Requested Vol.:                   \n");
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
-	printf("                                 ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
-	printf("Dispensed Vol.:\n");
+	printf("Dispensed Vol.:                   \n");
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
-	printf("                                 ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
-	printf("Fuel Grade:\n");
+	printf("Fuel Grade:                       \n");
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
-	printf("                                 ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
-	printf("Cost:\n");
+	printf("Cost:                             \n");
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
-	printf("                                 ");
+	printf("                                    ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
 	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
 
@@ -202,22 +194,23 @@ void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 		if (!fuelTankStation->WithdrawGas(DBL_GasFlowRate, data->fuelGrade)) break;
 		// If above condition happened, maybe show some flashy colors or some shit
 
-		data->dispensedVolume += DBL_GasFlowRate;
 		PrintCustomerDetails(cData);
+		data->dispensedVolume += DBL_GasFlowRate;
+
+		LogMessage(string("Before sem").c_str(), 21);
 
 		ps->Signal();
 		cs->Wait();
 
+		LogMessage(string("After sem").c_str(), 21);
+
 		SLEEP(1000);
 	}
 
-	LogMessage(string("Finished Dispensing. Waiting for thread to catch up").c_str(), 23);
-	data->isDone = true;
+	LogMessage(string("Finished Dispensing").c_str());
 
+	data->isDone = true;
 	ps->Signal();
-	LogMessage(string("Waiting for signal to signal next customer").c_str(), 23);
-	cs->Wait();
-	LogMessage(string("Signaling next customer").c_str(), 23);
 }
 
 int Pump::main()

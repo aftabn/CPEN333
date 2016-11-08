@@ -19,7 +19,6 @@ CDataPool *dps[INT_NumPumps];
 struct GasPumpData *gpData[INT_NumPumps];
 
 PerThreadStorage int threadPumpNumber;
-PerThreadStorage bool isCustomerDone;
 
 char gChar1;
 char gChar2;
@@ -85,7 +84,7 @@ void AlertGSCForAuthorization(int num)
 
 void WaitForGSCAuthorization(int num)
 {
-	LogMessage(string("Waiting for authorization for pump " + to_string(num)).c_str(), 21);
+	LogMessage(string("Waiting for authorization for pump " + to_string(num)).c_str(), 20);
 	while (!isPumpAuthorized[num])
 	{
 		SLEEP(100);
@@ -98,7 +97,6 @@ void WaitForGSCAuthorization(int num)
 UINT __stdcall PumpThread(void *args)	// thread function
 {
 	threadPumpNumber = *(int *)(args);
-	isCustomerDone = false;
 
 	while (1)
 	{
@@ -107,24 +105,16 @@ UINT __stdcall PumpThread(void *args)	// thread function
 		WaitForGSCAuthorization(threadPumpNumber);
 		cSemaphores[threadPumpNumber]->Signal();
 
-		isCustomerDone = false;
-		while (!isCustomerDone)
+		while (!gpData[threadPumpNumber]->isDone)
 		{
-			LogMessage(string("Waiting for ps at " + to_string(threadPumpNumber)).c_str(), 21);
 			pSemaphores[threadPumpNumber]->Wait();
-
 			PrintPumpDetails(gpData[threadPumpNumber]->dispensedVolume, threadPumpNumber);
-			if (gpData[threadPumpNumber]->isDone)
-			{
-				gpData[threadPumpNumber]->isDone = false;
-				isCustomerDone = true;
-			}
-
-			LogMessage(string("Waiting for cs at " + to_string(threadPumpNumber)).c_str(), 21);
 			cSemaphores[threadPumpNumber]->Signal();
 		}
 
-		LogMessage(string("Broken out of loop " + to_string(threadPumpNumber)).c_str(), 21);
+		pSemaphores[threadPumpNumber]->Wait();
+		gpData[threadPumpNumber]->isDone = false;
+		cSemaphores[threadPumpNumber]->Signal();
 	}
 
 	return 0;
