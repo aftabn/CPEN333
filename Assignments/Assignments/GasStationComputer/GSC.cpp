@@ -5,9 +5,13 @@
 #include "FuelTankStation.h"
 
 const int INT_NumPumps = 1;
+const int INT_xCustomerInfoWidth = 35;
+const int INT_yCustomerInfoWidth = 8;
+
 bool isPumpAuthorized[INT_NumPumps];
 bool needPumpAuthorization[INT_NumPumps];
 
+FuelTankStation fuelTankStation;
 CMutex mutex(string("__Mutex__") + string("GSC"));
 CSemaphore *cSemaphores[INT_NumPumps];
 CSemaphore *pSemaphores[INT_NumPumps];
@@ -15,6 +19,7 @@ CDataPool *dps[INT_NumPumps];
 struct GasPumpData *gpData[INT_NumPumps];
 
 PerThreadStorage int threadPumpNumber;
+PerThreadStorage bool isCustomerDone;
 
 char gChar1;
 char gChar2;
@@ -29,43 +34,97 @@ struct GasPumpData
 	string customerName;
 };
 
+void LogMessage(char const *message, int line)
+{
+	mutex.Wait();
+	MOVE_CURSOR(0, line);
+	printf("                                                                  \n");
+	MOVE_CURSOR(0, line);
+	printf("GSC: %s\n", message);
+	fflush(stdout);
+	mutex.Signal();
+}
+
+void PrintPumpDetails(double dispensedVolume, int pumpNumber)
+{
+	mutex.Wait();
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
+	printf("PUMP %d:\n", pumpNumber);
+
+	string name = gpData[pumpNumber]->customerName;
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
+	printf("Customer Name: %s\n", name.c_str());
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
+	printf("Credit Card: %lld\n", gpData[pumpNumber]->creditCard);
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
+	printf("Dispensed Vol.: %3.1f\n", dispensedVolume);
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
+	printf("Fuel Grade: %c\n", (char)('A' + gpData[pumpNumber]->fuelGrade));
+
+	fflush(stdout);
+	mutex.Signal();
+}
+
+void AlertGSCForAuthorization(int num)
+{
+	mutex.Wait();
+	needPumpAuthorization[num] = true;
+	printf("Pump %d needs authorization.\n", num);
+	fflush(stdout);
+	mutex.Signal();
+}
+
+void WaitForGSCAuthorization(int num)
+{
+	LogMessage(string("Waiting for authorization for pump " + to_string(num)).c_str(), 21);
+	while (!isPumpAuthorized[num])
+	{
+		SLEEP(100);
+	}
+
+	isPumpAuthorized[num] = false; // Reset it
+	gpData[num]->isAuthorized = true;
+}
+
 UINT __stdcall PumpThread(void *args)	// thread function
 {
 	threadPumpNumber = *(int *)(args);
+	isCustomerDone = false;
 
 	while (1)
 	{
 		pSemaphores[threadPumpNumber]->Wait();
-
-		// Create function to alert gas station computer that a pump needs authorization
-		mutex.Wait();
-		needPumpAuthorization[threadPumpNumber] = true;
-		printf("Pump %d needs authorization.\n", threadPumpNumber);
-		mutex.Signal();
-
-		// Wait until GSC authorizes, and then convey this to pump
-		while (!isPumpAuthorized[threadPumpNumber]) SLEEP(100);
-		gpData[threadPumpNumber]->isAuthorized = true;
-
+		AlertGSCForAuthorization(threadPumpNumber);
+		WaitForGSCAuthorization(threadPumpNumber);
 		cSemaphores[threadPumpNumber]->Signal();
 
-		// Wait until the dispensing is finished
-		while (!gpData[threadPumpNumber]->isDone)
+		isCustomerDone = false;
+		while (!isCustomerDone)
 		{
+			LogMessage(string("Waiting for ps at " + to_string(threadPumpNumber)).c_str(), 21);
 			pSemaphores[threadPumpNumber]->Wait();
 
-			mutex.Wait();
-			printf("Pump %d: Dispensed Vol.: %3.1f", threadPumpNumber,
-				gpData[threadPumpNumber]->dispensedVolume);
-			mutex.Signal();
+			PrintPumpDetails(gpData[threadPumpNumber]->dispensedVolume, threadPumpNumber);
+			if (gpData[threadPumpNumber]->isDone)
+			{
+				gpData[threadPumpNumber]->isDone = false;
+				isCustomerDone = true;
+			}
 
+			LogMessage(string("Waiting for cs at " + to_string(threadPumpNumber)).c_str(), 21);
 			cSemaphores[threadPumpNumber]->Signal();
 		}
 
-		// Reset the bool for the next customer and continue
-		pSemaphores[threadPumpNumber]->Wait();
-		gpData[threadPumpNumber]->isDone = false;
-		cSemaphores[threadPumpNumber]->Signal();
+		LogMessage(string("Broken out of loop " + to_string(threadPumpNumber)).c_str(), 21);
 	}
 
 	return 0;
@@ -73,15 +132,13 @@ UINT __stdcall PumpThread(void *args)	// thread function
 
 void ProcessCommand()
 {
-	string command = "" + gChar1 + gChar2;
-
-	if (command == "RF")
+	if (gChar1 == 'R' && gChar2 == 'F')
 	{
 		mutex.Wait();
 		printf("Refilling fuel tanks\n");
 		mutex.Signal();
 
-		FuelTankStation::RefillTanks();
+		fuelTankStation.RefillTanks();
 	}
 	else if (gChar1 == 'F' && (gChar2 - '0' >= 0 && gChar2 - '0' < INT_NumPumps))
 	{
@@ -91,6 +148,7 @@ void ProcessCommand()
 		printf("Authorizing pump %d\n", pump);
 		mutex.Signal();
 
+		needPumpAuthorization[pump] = false;
 		isPumpAuthorized[pump] = true;
 	}
 	else
@@ -108,16 +166,16 @@ void Initialize(int threadNums[], CThread *threads[])
 		isPumpAuthorized[i] = false;
 		needPumpAuthorization[i] = false;
 
-		cSemaphores[i] = new CSemaphore("C" + to_string(i), 0, 1);
-		pSemaphores[i] = new CSemaphore("P" + to_string(i), 0, 1);
-		dps[i] = new CDataPool("Pump" + to_string(i), sizeof(struct GasPumpData));
+		pSemaphores[i] = new CSemaphore(string("PS") + to_string(i), 0, 1);
+		cSemaphores[i] = new CSemaphore(string("CS") + to_string(i), 1, 1);
+		dps[i] = new CDataPool(string("Pump") + to_string(i), sizeof(struct GasPumpData));
 		gpData[i] = (struct GasPumpData *)(dps[i]->LinkDataPool());
 
 		threadNums[i] = i;
 		threads[i] = new  CThread(PumpThread, ACTIVE, &threadNums[i]);
 	}
 
-	FuelTankStation::Initialize();
+	fuelTankStation.Initialize();
 }
 
 int main()
@@ -139,6 +197,8 @@ int main()
 		gChar2 = getchar();
 		ProcessCommand();
 	}
+
+	p1.WaitForProcess();
 
 	return 0;
 }

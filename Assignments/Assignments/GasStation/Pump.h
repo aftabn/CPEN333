@@ -1,23 +1,60 @@
 #pragma once
-#include "C:\CPEN Labs\Assignments\rt.h"
+#include "../../rt.h"
+#include "../GasStationComputer/FuelTankStation.h"
+
 class Pump :
 	public ActiveClass
 {
+	struct CustomerData
+	{
+		long long creditCard;
+		int fuelGrade;
+		double requestedVolume;
+		string customerName;
+	};
+
 private:
 	static const double DBL_GasCost[4];
 
+	const int INT_LineNumber = 19;
+
 	const int INT_xCustomerInfoWidth = 35;
-	const int INT_yCustomerInfoWidth = 8;
+	const int INT_yCustomerInfoWidth = 9;
 	const double DBL_GasFlowRate = 0.5;
 
-	//Fuel Cost
+	//Status constants
+	static const int INT_WaitingCustomerStatus = 1;
+	static const int INT_WaitingAuthorizationStatus = 2;
+	static const int INT_WaitingForFuelTankStationStatus = 3;
+	static const int INT_DispensingGas = 4;
+
+	FuelTankStation *fuelTankStation;
+	CTypedPipe<CustomerData> *pipe;
+	struct GasPumpData *data;
+	CDataPool *dp;
+	CMutex *gasStationMutex;
+	CMutex *pumpMutex;
+	CSemaphore *ps;
+	CSemaphore *cs;
 
 	int pumpNumber;
-	int main();
-	void PrintCustomerDetails(CMutex &gasStationMutex, struct CustomerData &data,
-		double dispensedVolume) const;
+	int pumpStatus;
+
+	int main() override;
+	void Initialize();
+
+	void PrintEmptyDetails() const;
+	void PrintCustomerDetails(struct CustomerData &cData) const;
+	void StartTransaction(struct CustomerData &cData) const;
+	void WaitForAuthorizationFromGSC(struct CustomerData &cData) const;
+	void WaitUntilGasStationReady() const;
+	void DispenseFuelUntilComplete(struct CustomerData &cData) const;
+	string ReadStatus(int status) const;
+
+	void LogMessage(char const *message, int line) const;
+	void LogMessage(char const *message) const { LogMessage(message, INT_LineNumber); };
 
 public:
-	Pump(int num);
+	Pump(int num, FuelTankStation *fuelTankStation);
 	~Pump();
 };

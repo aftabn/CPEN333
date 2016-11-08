@@ -1,44 +1,53 @@
 #include "..\..\rt.h"
 #include "FuelTankStation.h"
 
-double FuelTankStation::gasTankLevel[INT_NumTanks];
-CMutex* FuelTankStation::mutex[INT_NumTanks];
+FuelTankStation::FuelTankStation()
+{
+	for (int i = 0; i < INT_NumTanks; i++)
+	{
+		mutex[i] = new CMutex("__Mutex__" + string("FuelTank") + to_string(i));
+		dps[i] = new CDataPool("FuelTank" + to_string(i), sizeof(double));
+		gasTankLevels[i] = (double *)(dps[i]->LinkDataPool());
+	}
+}
 
 void FuelTankStation::Initialize()
 {
-	for (int i = 0; i < INT_NumTanks; i++) {
-		mutex[i] = new CMutex("__Mutex__" + string("FuelTank") + to_string(i));
-		gasTankLevel[i] = maxTankLevel;
+	for (int i = 0; i < INT_NumTanks; i++)
+	{
+		mutex[i]->Wait();
+		*gasTankLevels[i] = INT_MaxTankLevel;
+		mutex[i]->Signal();
 	}
 }
 
 bool FuelTankStation::WithdrawGas(double amount, int gasType) {
 	mutex[gasType]->Wait();
+
 	bool status = false;
 
-	if (gasTankLevel[gasType] >= amount) {
+	if (*gasTankLevels[gasType] >= amount)
+	{
+		*gasTankLevels[gasType] -= amount;
 		status = true;
-		gasTankLevel[gasType] -= amount;
-		//printf("Successfully withdrew %f amount of gas from tank %d", amount, gasType);
-	}
-
-	else {
-		//printf("Cannot withdraw %f amount of gas from tank %d . Not enough gas in tank", amount, gasType);
 	}
 
 	mutex[gasType]->Signal();
+
 	return status;
 }
 
-void FuelTankStation::RefillTanks() {
+void FuelTankStation::RefillTanks()
+{
 	for (int i = 0; i < INT_NumTanks; i++)
 	{
 		mutex[i]->Wait();
-		gasTankLevel[i] = maxTankLevel;
+		*gasTankLevels[i] = INT_MaxTankLevel;
 		mutex[i]->Signal();
 	}
 }
 
-double FuelTankStation::GetGas(int gasType) {
-	return gasTankLevel[gasType];
+double FuelTankStation::GetGas(int gasType)
+{
+	return *gasTankLevels[gasType];
 }

@@ -9,6 +9,17 @@ struct CustomerData
 	string customerName;
 };
 
+void LogMessage(CMutex &gasStationMutex, char const *message)
+{
+	gasStationMutex.Wait();
+	MOVE_CURSOR(0, 20);
+	printf("                                                                  \n");
+	MOVE_CURSOR(0, 20);
+	printf("CUSTOMER: %s\n", message);
+	fflush(stdout);
+	gasStationMutex.Signal();
+}
+
 int Customer::main()
 {
 	// Create pump mutex and pipeline
@@ -17,25 +28,25 @@ int Customer::main()
 	CTypedPipe<CustomerData> pipe(string("Pipe") + to_string(pumpNumber), 1024);
 
 	mutex.Wait();
+	LogMessage(gasStationMutex, string("New customer " + CustomerName + " sending off data").c_str());
 
 	// Create customer data struct and then send off data
 	struct CustomerData data;
 	data.creditCard = this->creditCard;
 	data.fuelGrade = this->fuelGrade;
 	data.requestedVolume = this->requestedVolume;
-	data.customerName = this->CustomerName;
+	data.customerName = CustomerName;
 
 	pipe.Write(&data);
 	mutex.Signal();
 	SLEEP(1000);
 
-	// Wait for whether transaction successful
 	mutex.Wait();
+	LogMessage(gasStationMutex, string("About to signal next customer").c_str());
 	IsDoneTransaction = true;
-	/*gasStationMutex.Wait();
-	printf("CUSTOMER: I (%s) am done at pump %d\n\n", CustomerName.c_str(), pumpNumber);
-	gasStationMutex.Signal();*/
 	mutex.Signal();
+	LogMessage(gasStationMutex, string("Released mutex").c_str());
+	SLEEP(2000); // Give the GasStation simulation time to delete customer object and assign new one
 
 	return 0;
 }
@@ -44,6 +55,7 @@ Customer::Customer()
 {
 	srand(time(0));
 
+	IsDoneTransaction = false;
 	creditCard = CreateRandomCreditCardNumber();
 	CustomerName = CreateRandomName();
 	fuelGrade = CreateRandomFuelGrade();
@@ -61,12 +73,12 @@ void Customer::AssignToPump(int num)
 
 long long Customer::CreateRandomCreditCardNumber()
 {
-	//String output
-	long long creditCardNumber = 4000000000000000;
+	long long creditCardNumber = 4LL;
 
-	for (int i = 0; i < 15; i++) {
-		int digit = rand() % 10;
-		creditCardNumber += digit * 10 ^ (15 - i);
+	for (int i = 0; i < 15; i++)
+	{
+		creditCardNumber *= 10;
+		creditCardNumber += rand() % 10;
 	}
 
 	return creditCardNumber;
@@ -100,5 +112,6 @@ int Customer::CreateRandomFuelGrade()
 
 double Customer::CreateRandomRequestedVolume()
 {
-	return rand() % 61 + 10;
+	//return rand() % 61 + 10;
+	return 10;
 }

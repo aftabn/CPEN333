@@ -2,14 +2,6 @@
 #include <ctime>
 #include "../GasStationComputer/FuelTankStation.h"
 
-struct CustomerData
-{
-	long long creditCard;
-	int fuelGrade;
-	double requestedVolume;
-	string customerName;
-};
-
 struct GasPumpData
 {
 	long long creditCard;
@@ -20,31 +12,69 @@ struct GasPumpData
 	string customerName;
 };
 
-void LogMessage(CMutex &gasStationMutex, char const *message)
-{
-	gasStationMutex.Wait();
-	MOVE_CURSOR(0, 18);
-	printf("                                                                  ");
-	MOVE_CURSOR(0, 18);
-	printf("PUMP: %s\n", message);
-	gasStationMutex.Signal();
-}
-
 const double Pump::DBL_GasCost[] = { 0.98, 1.02, 1.10, 1.25 };
 
-Pump::Pump(int num)
+void Pump::LogMessage(char const *message, int line) const
 {
+	gasStationMutex->Wait();
+	MOVE_CURSOR(0, line);
+	printf("                                                                  \n");
+	MOVE_CURSOR(0, line);
+	printf("PUMP: %s\n", message);
+	fflush(stdout);
+	gasStationMutex->Signal();
+}
+
+string Pump::ReadStatus(int status) const
+{
+	switch (status)
+	{
+	case INT_WaitingCustomerStatus: return "Waiting for Customer";
+	case INT_WaitingAuthorizationStatus: return "Waiting for Authorization";
+	case INT_WaitingForFuelTankStationStatus: return "Waiting for Fuel Tank Station";
+	case INT_DispensingGas: return "Dispensing Gas";
+	default: return "Error";
+	}
+}
+
+Pump::Pump(int num, FuelTankStation *fuelTankStation)
+{
+	this->fuelTankStation = fuelTankStation;
 	pumpNumber = num;
+
+	Initialize();
 }
 
 Pump::~Pump()
 {
+	delete gasStationMutex;
+	delete pumpMutex;
+	delete ps;
+	delete cs;
+	delete pipe;
+	delete dp;
+	delete data;
 }
 
-void Pump::PrintCustomerDetails(CMutex &gasStationMutex, struct CustomerData &data,
-	double dispensedVolume) const
+void Pump::Initialize()
 {
-	gasStationMutex.Wait();
+	gasStationMutex = new CMutex(string("__Mutex__") + string("GasStation"));
+	pumpMutex = new CMutex(string("__Mutex__") + string("Pump") + to_string(pumpNumber));
+
+	ps = new CSemaphore(string("PS") + to_string(pumpNumber), 0, 1);
+	cs = new CSemaphore(string("CS") + to_string(pumpNumber), 1, 1);
+
+	pipe = new CTypedPipe<CustomerData>(string("Pipe") + to_string(pumpNumber), 1024);
+	dp = new CDataPool(string("Pump") + to_string(pumpNumber), sizeof(struct GasPumpData));
+	data = (struct GasPumpData *)(dp->LinkDataPool());
+
+	pumpStatus = INT_WaitingCustomerStatus;
+	PrintEmptyDetails();
+}
+
+void Pump::PrintCustomerDetails(CustomerData &cData) const
+{
+	gasStationMutex->Wait();
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
 	printf("                                 ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
@@ -53,122 +83,170 @@ void Pump::PrintCustomerDetails(CMutex &gasStationMutex, struct CustomerData &da
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
 	printf("                                 ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
-	printf("Customer Name: %s\n", data.customerName.c_str());
+	printf("Customer Name: %s\n", cData.customerName.c_str());
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
 	printf("                                 ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
-	printf("Credit Card: %lld\n", data.creditCard);
+	printf("Credit Card: %lld\n", cData.creditCard);
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
-	printf("Requested Vol.: %3.1f\n", data.requestedVolume);
+	printf("Requested Vol.: %3.1f\n", cData.requestedVolume);
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
-	printf("Dispensed Vol.: %3.1f\n", dispensedVolume);
+	printf("Dispensed Vol.: %3.1f\n", data->dispensedVolume);
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
-	printf("Fuel Grade: %c\n", (char)('A' + data.fuelGrade));
+	printf("Fuel Grade: %c\n", (char)('A' + cData.fuelGrade));
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
 	printf("                                 ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
-	printf("Cost: $ %.2f\n", (DBL_GasCost[data.fuelGrade] * dispensedVolume));
+	printf("Cost: $%.2f\n", (DBL_GasCost[cData.fuelGrade] * data->dispensedVolume));
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
+	printf("                                                ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
+	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
 
 	fflush(stdout);
-	gasStationMutex.Signal();
+	gasStationMutex->Signal();
+}
+
+void Pump::PrintEmptyDetails() const
+{
+	gasStationMutex->Wait();
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
+	printf("PUMP %d:\n", pumpNumber);
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
+	printf("Customer Name:\n");
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
+	printf("Credit Card:\n");
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
+	printf("Requested Vol.:\n");
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
+	printf("Dispensed Vol.:\n");
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
+	printf("Fuel Grade:\n");
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
+	printf("Cost:\n");
+
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
+	printf("                                 ");
+	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
+	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
+
+	fflush(stdout);
+	gasStationMutex->Signal();
+}
+
+void Pump::StartTransaction(CustomerData &cData) const
+{
+	// Wait until allowed to send details
+	cs->Wait();
+	data->creditCard = cData.creditCard;
+	data->customerName = cData.customerName;
+	data->fuelGrade = cData.fuelGrade;
+	data->dispensedVolume = 0;
+	data->isAuthorized = false;
+	data->isDone = false;
+	ps->Signal();
+}
+
+void Pump::WaitForAuthorizationFromGSC(CustomerData &cData) const
+{
+	LogMessage(string("Waiting for authorization").c_str());
+	PrintCustomerDetails(cData);
+	cs->Wait();
+
+	// Reset this for the next customer
+	if (data->isAuthorized) data->isAuthorized = false;
+}
+
+void Pump::WaitUntilGasStationReady() const
+{
+	LogMessage(string("Waiting for gas to be ready").c_str());
+
+	while (fuelTankStation->GetGas(data->fuelGrade) < 200)
+	{
+		SLEEP(200);
+	}
+}
+
+void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
+{
+	LogMessage(string("Starting dispensing").c_str());
+
+	while (fuelTankStation->GetGas(data->fuelGrade) > 0 && data->dispensedVolume < cData.requestedVolume)
+	{
+		if (!fuelTankStation->WithdrawGas(DBL_GasFlowRate, data->fuelGrade)) break;
+		// If above condition happened, maybe show some flashy colors or some shit
+
+		data->dispensedVolume += DBL_GasFlowRate;
+		PrintCustomerDetails(cData);
+
+		ps->Signal();
+		cs->Wait();
+
+		SLEEP(1000);
+	}
+
+	LogMessage(string("Finished Dispensing. Waiting for thread to catch up").c_str(), 23);
+	data->isDone = true;
+
+	ps->Signal();
+	LogMessage(string("Waiting for signal to signal next customer").c_str(), 23);
+	cs->Wait();
+	LogMessage(string("Signaling next customer").c_str(), 23);
 }
 
 int Pump::main()
 {
-	// Create mutexes and pipeline
-	CMutex gasStationMutex(string("__Mutex__") + string("GasStation"));
-	CMutex pumpMutex(string("__Mutex__") + string("Pump") + to_string(pumpNumber));
-	CTypedPipe<CustomerData> pipe(string("Pipe") + to_string(pumpNumber), 1024);
-
-	CSemaphore ps(string("PS") + to_string(pumpNumber), 0, 1);
-	CSemaphore cs(string("CS") + to_string(pumpNumber), 0, 1);
-
-	// Connect to datapool
-	CDataPool dp(string("DataPool") + to_string(pumpNumber), sizeof(struct GasPumpData));
-	struct GasPumpData *data = (struct GasPumpData *)(dp.LinkDataPool());
-
-	double dispensedVolume;
-
 	while (1)
 	{
-		dispensedVolume = 0;
+		pumpStatus = INT_WaitingCustomerStatus;
+		PrintEmptyDetails();
 
-		struct CustomerData temp;
-		pipe.Read(&temp);
-		pumpMutex.Wait();
+		struct CustomerData cData;
+		pipe->Read(&cData);
+		pumpMutex->Wait();
 
-		PrintCustomerDetails(gasStationMutex, temp, dispensedVolume);
+		LogMessage(string("Waiting for authorization").c_str(), 21);
 
-		// Wait until allowed to send details
-		cs.Wait();
-		data->creditCard = temp.creditCard;
-		data->customerName = temp.customerName;
-		data->fuelGrade = temp.fuelGrade;
-		data->dispensedVolume = 0;
-		data->isAuthorized = false;
-		data->isDone = false;
-		ps.Signal();
+		pumpStatus = INT_WaitingAuthorizationStatus;
+		PrintCustomerDetails(cData);
+		StartTransaction(cData);
+		WaitForAuthorizationFromGSC(cData);
 
-		LogMessage(gasStationMutex, string("Waiting for authorization").c_str());
+		pumpStatus = INT_WaitingForFuelTankStationStatus;
+		PrintCustomerDetails(cData);
+		WaitUntilGasStationReady();
 
-		// Wait for authorization
-		cs.Wait();
+		pumpStatus = INT_DispensingGas;
+		DispenseFuelUntilComplete(cData);
 
-		LogMessage(gasStationMutex, string("Waiting for fuel tank station to be ready").c_str());
-
-		// Reset this for the next customer
-		if (data->isAuthorized) data->isAuthorized = false;
-
-		// while gas station tank grade less than 200, wait
-		while (FuelTankStation::GetGas(data->fuelGrade) < 200) SLEEP(200);
-
-		LogMessage(gasStationMutex, string("Starting dispensing").c_str());
-
-		while (FuelTankStation::GetGas(data->fuelGrade) > 0 && dispensedVolume < temp.requestedVolume)
-		{
-			if (!FuelTankStation::WithdrawGas(DBL_GasFlowRate, data->fuelGrade)) break;
-			// If above condition happened, maybe show some flashy colors or some shit
-
-			dispensedVolume += DBL_GasFlowRate;
-			PrintCustomerDetails(gasStationMutex, temp, dispensedVolume);
-
-			data->dispensedVolume = dispensedVolume;
-			ps.Signal();
-			cs.Wait();
-
-			SLEEP(1000);
-		}
-
-		data->isDone = true;
-		ps.Signal();
-
-		pumpMutex.Signal();
-
-		// Wait for fuel tank station to be ready
-		// Once ready,
-
-		// Signal start of transaction
-		/*cs1.Signal();
-		ps1.Wait();*/
-
-		// Start dispensing and updating the pool
-		/*int dispensed = 0;
-		int rate = data->requestedVolume / 10;
-		while (dispensed < gpData->requestedVolume)
-		{
-			dispensed += rate;
-			gpData->dispensedVolume = dispensed;
-			SLEEP(500);
-		}*/
-
-		//cs1.Signal();
+		LogMessage(string("Releasing mutex for next customer").c_str());
+		pumpMutex->Signal();
 	}
-
-	// End transaction and "leave"
 	return 0;
 }

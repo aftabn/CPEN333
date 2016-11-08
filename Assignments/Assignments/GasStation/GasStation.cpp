@@ -5,44 +5,53 @@
 #include "Pump.h"
 #include "Customer.h"
 #include <queue>
+#include "../GasStationComputer/FuelTankStation.h"
 
-CMutex mutex(string("__Mutex__") + string("GasStation"));
 const int INT_NumPumps = 1;
+
+FuelTankStation *fuelTankStation;
+CMutex mutex(string("__Mutex__") + string("GasStation"));
+Pump *pumps[INT_NumPumps];
+Customer *activeCustomers[INT_NumPumps];
+queue<Customer*> pumpQueue;
 
 void LogMessage(char const *message)
 {
 	mutex.Wait();
-	MOVE_CURSOR(0, 16);
-	printf("                                                                  ");
-	MOVE_CURSOR(0, 16);
+	MOVE_CURSOR(0, 18);
+	printf("                                                                  \n");
+	MOVE_CURSOR(0, 18);
 	printf("GS: %s\n", message);
+	fflush(stdout);
 	mutex.Signal();
 }
 
-void InitializePumps(Pump *pumps[], Customer *activeCustomers[])
+void Initialize()
 {
+	FuelTankStation *fuelTankStation = new FuelTankStation();
+
 	for (int i = 0; i < INT_NumPumps; i++)
 	{
-		pumps[i] = new Pump(i);
+		pumps[i] = new Pump(i, fuelTankStation);
 		pumps[i]->Resume();
 
 		activeCustomers[i] = nullptr;
 	}
+
 	string message = "GS: Created " + INT_NumPumps + string(" pumps");
 	LogMessage(message.c_str());
 }
 
-void CreateNewCustomer(queue<Customer*> &pumpQueue)
+void CreateNewCustomer()
 {
 	Customer *customer = new Customer();
 	pumpQueue.push(customer);
 
-	/*mutex.Wait();
-	printf("GS: Queue size increased to %d\n", pumpQueue.size());
-	mutex.Signal();*/
+	string message = "Queue Size: " + to_string(pumpQueue.size());
+	LogMessage(message.c_str());
 }
 
-void RemoveFinishedCustomers(Customer *activeCustomers[])
+void RemoveFinishedCustomers()
 {
 	for (int i = 0; i < INT_NumPumps; i++)
 	{
@@ -53,12 +62,11 @@ void RemoveFinishedCustomers(Customer *activeCustomers[])
 		{
 			delete customer;
 			activeCustomers[i] = nullptr;
-			customer = nullptr;
 		}
 	}
 }
 
-void AssignNewCustomers(Customer *activeCustomers[], queue<Customer*> &pumpQueue)
+void AssignNewCustomers()
 {
 	if (pumpQueue.size() == 0) return;
 
@@ -73,11 +81,6 @@ void AssignNewCustomers(Customer *activeCustomers[], queue<Customer*> &pumpQueue
 			customer->AssignToPump(i);
 			customer->Resume();
 
-			/*mutex.Wait();
-			printf("GS: Queue size decreased to %d. Assigned customer %s to pump %d\n",
-				pumpQueue.size(), customer->CustomerName.c_str(), i);
-			mutex.Signal();*/
-
 			if (pumpQueue.size() == 0) return;
 		}
 	}
@@ -85,30 +88,23 @@ void AssignNewCustomers(Customer *activeCustomers[], queue<Customer*> &pumpQueue
 
 int main()
 {
-	// Step 1, create pumps, and queues for each pump
-	Pump *pumps[INT_NumPumps];
-	Customer *activeCustomers[INT_NumPumps];
-	queue<Customer*> pumpQueue;
-	InitializePumps(pumps, activeCustomers);
+	Initialize();
 
-	// Step 2, start creating customers at random intervals and add to the smallest queue
 	srand(time(nullptr));
 	int customerWaitTime, count;
 
 	while (1)
 	{
-		CreateNewCustomer(pumpQueue);
-		/*string message = "Customer queue is at " + to_string(pumpQueue.size());
-		LogMessage(message.c_str());*/
+		CreateNewCustomer();
 
-		// Recalculate random customer time
+		// Calculate random time until next customer
 		customerWaitTime = rand() % 6 + 5;
 		count = 0;
 
-		while (count < 1)
+		while (count < customerWaitTime)
 		{
-			RemoveFinishedCustomers(activeCustomers);
-			AssignNewCustomers(activeCustomers, pumpQueue);
+			RemoveFinishedCustomers();
+			AssignNewCustomers();
 
 			SLEEP(1000);
 			count++;
