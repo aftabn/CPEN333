@@ -22,17 +22,20 @@ void FuelTankStation::Initialize()
 	}
 }
 
-bool FuelTankStation::WithdrawGas(double amount, int gasType) {
+double FuelTankStation::WithdrawGas(double amount, int gasType)
+{
+	int gas = 0;
+
 	mutex[gasType]->Wait();
 
-	bool status = false;
-
+	// If there's enough gas, withdraw
 	if (data[gasType]->gasTankLevel >= amount)
 	{
 		data[gasType]->gasTankLevel -= amount;
-		status = true;
+		gas = amount;
 	}
 
+	// If gas drops below level, update status
 	if (data[gasType]->gasTankLevel <= INT_LowTankLevel)
 	{
 		data[gasType]->tankStatus = INT_FuelTankLowStatus;
@@ -40,7 +43,7 @@ bool FuelTankStation::WithdrawGas(double amount, int gasType) {
 
 	mutex[gasType]->Signal();
 
-	return status;
+	return gas;
 }
 
 void FuelTankStation::RefillTanks()
@@ -48,8 +51,17 @@ void FuelTankStation::RefillTanks()
 	for (int i = 0; i < INT_NumTanks; i++)
 	{
 		mutex[i]->Wait();
+		data[i]->tankStatus = INT_FuelTankRefillingStatus;
+		mutex[i]->Signal();
+	}
+
+	SLEEP(1000);
+
+	for (int i = 0; i < INT_NumTanks; i++)
+	{
+		mutex[i]->Wait();
 		data[i]->gasTankLevel = INT_MaxTankLevel;
-		data[i]->tankStatus = INT_FuelTankLowStatus;
+		data[i]->tankStatus = INT_FuelTankOkStatus;
 		mutex[i]->Signal();
 	}
 }

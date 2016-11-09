@@ -20,7 +20,7 @@ private:
 
 	const int INT_xCustomerInfo = 35;
 	const int INT_yCustomerInfo = 9;
-	const double DBL_GasFlowRate = 0.5;
+	const double DBL_GasFlowRate = 5;
 
 	//Status constants
 	static const int INT_WaitingCustomerStatus = 6;				// Yellow

@@ -10,7 +10,7 @@ struct GasPumpData
 	int pumpStatus;
 	bool isAuthorized;
 	bool isDone;
-	string customerName;
+	char customerName[];
 };
 
 const double Pump::DBL_GasCost[] = { 0.98, 1.02, 1.10, 1.25 };
@@ -140,7 +140,7 @@ void Pump::StartTransaction(CustomerData &cData) const
 	// Wait until allowed to send details
 	cs->Wait();
 	data->creditCard = cData.creditCard;
-	data->customerName = cData.customerName;
+	strcpy_s(data->customerName, 30, cData.customerName.c_str());
 	data->fuelGrade = cData.fuelGrade;
 	data->dispensedVolume = 0;
 	data->isAuthorized = false;
@@ -174,13 +174,10 @@ void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 
 	while (fuelTankStation->GetGas(data->fuelGrade) > 0 && data->dispensedVolume < cData.requestedVolume)
 	{
-		// If condition happens, maybe show some flashy colors or some shit
-		if (!fuelTankStation->WithdrawGas(DBL_GasFlowRate, data->fuelGrade)) break;
-
-		data->dispensedVolume += DBL_GasFlowRate;
+		data->dispensedVolume += fuelTankStation->WithdrawGas(DBL_GasFlowRate, data->fuelGrade);
 		PrintCustomerDetails(cData);
 
-		if (data->dispensedVolume >= cData.requestedVolume)
+		if (data->dispensedVolume >= cData.requestedVolume || (int)fuelTankStation->GetGas(data->fuelGrade) <= 0)
 		{
 			data->isDone = true;
 		}
@@ -194,7 +191,6 @@ void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 	LogMessage(string("Finished Dispensing").c_str());
 
 	ps->Signal();
-	//cs->Wait();
 }
 
 int Pump::main()

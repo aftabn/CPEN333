@@ -9,11 +9,11 @@ const int INT_NumFuelTanks = 4;
 
 const int INT_xCustomerInfo = 35;
 const int INT_yCustomerInfo = 8;
-const int INT_xFuelTankInfo = 90;
+const int INT_xFuelTankInfo = 70;
 const int INT_yFuelTankInfo = 0;
 
-const int INT_ConsoleOutputLine = 15;
-const int INT_ConsoleInputLine = 16;
+const int INT_ConsoleOutputLine = 16;
+const int INT_ConsoleInputLine = 15;
 const int INT_LineSizeMax = 20;
 
 FuelTankStation fuelTankStation;
@@ -43,7 +43,7 @@ struct GasPumpData
 	int pumpStatus;
 	bool isAuthorized;
 	bool isDone;
-	string customerName;
+	char customerName[];
 };
 
 void LogMessage(char const *message)
@@ -62,7 +62,7 @@ string ReadPumpStatus(int status)
 	{
 	case INT_WaitingCustomerStatus: return "Waiting for Customer";
 	case INT_WaitingAuthorizationStatus: return "Waiting for Authorization";
-	case INT_WaitingForFuelTankStationStatus: return "Waiting for Fuel Tank Station";
+	case INT_WaitingForFuelTankStationStatus: return "Waiting for Fuel";
 	case INT_DispensingGas: return "Dispensing Gas";
 	default: return "Error";
 	}
@@ -214,7 +214,7 @@ void ProcessCommand(char ch1, char ch2)
 {
 	if (ch1 == 'R' && ch2 == 'F')
 	{
-		LogMessage("Refilling fuel tanks");
+		//LogMessage("Refilling fuel tanks");
 		fuelTankStation.RefillTanks();
 	}
 	else if (ch1 == 'F')
@@ -223,17 +223,17 @@ void ProcessCommand(char ch1, char ch2)
 
 		if (pump >= 0 && pump < INT_NumPumps)
 		{
-			LogMessage(string("Authorizing pump" + to_string(pump)).c_str());
+			//LogMessage(string("Authorizing pump" + to_string(pump)).c_str());
 			isPumpAuthorized[pump] = true;
 		}
 		else
 		{
-			LogMessage("Invalid command");
+			//LogMessage("Invalid command");
 		}
 	}
 	else
 	{
-		LogMessage("Invalid command");
+		//LogMessage("Invalid command");
 	}
 }
 
@@ -258,8 +258,16 @@ void ScanKeyboard()
 
 		if (TEST_FOR_KEYBOARD() != 0)
 		{
-			inch1 = getchar();
-			inch2 = getchar();
+			inch1 = toupper(getchar());
+			inch2 = toupper(getchar());
+
+			getchar();
+
+			mutex.Wait();
+			MOVE_CURSOR(0, INT_ConsoleInputLine);
+			printf("                               ");
+			MOVE_CURSOR(0, INT_ConsoleInputLine);
+			mutex.Signal();
 
 			ProcessCommand(inch1, inch2);
 

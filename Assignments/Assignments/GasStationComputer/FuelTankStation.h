@@ -30,7 +30,7 @@ public:
 	~FuelTankStation() {}
 
 	void Initialize();
-	bool WithdrawGas(double amount, int gasType);
+	double WithdrawGas(double amount, int gasType);
 	void RefillTanks();
 	double GetGas(int gasType) const;
 	int GetStatusNumber(int gasType) const;
