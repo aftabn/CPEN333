@@ -28,8 +28,7 @@ int Customer::main()
 	CTypedPipe<CustomerData> pipe(string("Pipe") + to_string(pumpNumber), 1024);
 
 	mutex.Wait();
-	LogMessage(gasStationMutex, string("New customer " + CustomerName + " sending off data").c_str());
-
+	
 	// Create customer data struct and then send off data
 	struct CustomerData data;
 	data.creditCard = this->creditCard;
@@ -42,10 +41,8 @@ int Customer::main()
 	SLEEP(1000);
 
 	mutex.Wait();
-	LogMessage(gasStationMutex, string("About to signal next customer").c_str());
 	IsDoneTransaction = true;
 	mutex.Signal();
-	LogMessage(gasStationMutex, string("Released mutex").c_str());
 	SLEEP(2000); // Give the GasStation simulation time to delete customer object and assign new one
 
 	return 0;

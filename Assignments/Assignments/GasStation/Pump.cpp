@@ -156,7 +156,7 @@ void Pump::StartTransaction(CustomerData &cData)
 
 void Pump::WaitForAuthorizationFromGSC(CustomerData &cData) const
 {
-	LogMessage(string("Waiting for authorization").c_str());
+	//LogMessage(string("Waiting for authorization").c_str());
 	PrintCustomerDetails(cData);
 	cs->Wait();
 
@@ -166,7 +166,7 @@ void Pump::WaitForAuthorizationFromGSC(CustomerData &cData) const
 
 void Pump::WaitUntilGasStationReady() const
 {
-	LogMessage(string("Waiting for gas to be ready").c_str());
+	//LogMessage(string("Waiting for gas to be ready").c_str());
 
 	while (fuelTankStation->GetGas(data->fuelGrade) < 200)
 	{
@@ -176,7 +176,7 @@ void Pump::WaitUntilGasStationReady() const
 
 void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 {
-	LogMessage(string("Starting dispensing").c_str());
+	//LogMessage(string("Starting dispensing").c_str());
 
 	while (fuelTankStation->GetGas(data->fuelGrade) > 0 && data->dispensedVolume < cData.requestedVolume)
 	{
@@ -194,7 +194,7 @@ void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 		SLEEP(1000);
 	}
 
-	LogMessage(string("Finished Dispensing").c_str());
+	//LogMessage(string("Finished Dispensing").c_str());
 
 	ps->Signal();
 }
@@ -210,8 +210,6 @@ int Pump::main()
 		pipe->Read(&cData);
 		pumpMutex->Wait();
 
-		LogMessage(string("Waiting for authorization").c_str(), 21);
-
 		data->pumpStatus = INT_WaitingAuthorizationStatus;
 		PrintCustomerDetails(cData);
 		StartTransaction(cData);
@@ -224,7 +222,6 @@ int Pump::main()
 		data->pumpStatus = INT_DispensingGas;
 		DispenseFuelUntilComplete(cData);
 
-		LogMessage(string("Releasing mutex for next customer").c_str());
 		pumpMutex->Signal();
 	}
 	return 0;
