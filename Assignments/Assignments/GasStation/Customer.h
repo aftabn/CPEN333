@@ -7,7 +7,7 @@ class Customer :
 
 private:
 	int pumpNumber;
-	int creditCard;
+	long long creditCard;
 	double requestedVolume;
 	int fuelGrade;
 

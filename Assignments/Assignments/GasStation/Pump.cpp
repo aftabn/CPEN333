@@ -7,6 +7,7 @@ struct GasPumpData
 	long long creditCard;
 	int fuelGrade;
 	double dispensedVolume;
+	int pumpStatus;
 	bool isAuthorized;
 	bool isDone;
 	string customerName;
@@ -31,7 +32,7 @@ string Pump::ReadStatus(int status) const
 	{
 	case INT_WaitingCustomerStatus: return "Waiting for Customer";
 	case INT_WaitingAuthorizationStatus: return "Waiting for Authorization";
-	case INT_WaitingForFuelTankStationStatus: return "Waiting for Fuel Tank Station";
+	case INT_WaitingForFuelTankStationStatus: return "Waiting for Fuel";
 	case INT_DispensingGas: return "Dispensing Gas";
 	default: return "Error";
 	}
@@ -68,54 +69,35 @@ void Pump::Initialize()
 	dp = new CDataPool(string("Pump") + to_string(pumpNumber), sizeof(struct GasPumpData));
 	data = (struct GasPumpData *)(dp->LinkDataPool());
 
-	pumpStatus = INT_WaitingCustomerStatus;
+	data->pumpStatus = INT_WaitingCustomerStatus;
 	PrintEmptyDetails();
 }
 
 void Pump::PrintCustomerDetails(CustomerData &cData) const
 {
+	int x = (pumpNumber % 2) * INT_xCustomerInfo;
+	int y = (pumpNumber / 2) * INT_yCustomerInfo;
+
 	gasStationMutex->Wait();
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
-	printf("PUMP %d:\n", pumpNumber);
+	MOVE_CURSOR(x, y);		printf("                                 ");
+	MOVE_CURSOR(x, y + 1);	printf("                                 ");
+	MOVE_CURSOR(x, y + 2);	printf("                                 ");
+	MOVE_CURSOR(x, y + 3);	printf("                                 ");
+	MOVE_CURSOR(x, y + 4);	printf("                                 ");
+	MOVE_CURSOR(x, y + 5);	printf("                                 ");
+	MOVE_CURSOR(x, y + 6);	printf("                                 ");
+	MOVE_CURSOR(x, y + 7);	printf("                                 ");
 
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
-	printf("Customer Name: %s\n", cData.customerName.c_str());
+	MOVE_CURSOR(x, y);		printf("PUMP %d:\n", pumpNumber);
+	MOVE_CURSOR(x, y + 1);	printf("Customer Name: %s\n", cData.customerName.c_str());
+	MOVE_CURSOR(x, y + 2);	printf("Credit Card: %lld\n", cData.creditCard);
+	MOVE_CURSOR(x, y + 3);	printf("Requested Vol.: %3.1f\n", cData.requestedVolume);
+	MOVE_CURSOR(x, y + 4);	printf("Dispensed Vol.: %3.1f\n", data->dispensedVolume);
+	MOVE_CURSOR(x, y + 5);	printf("Fuel Grade: %c\n", (char)('A' + cData.fuelGrade));
+	MOVE_CURSOR(x, y + 6);	printf("Cost: $%.2f\n", (DBL_GasCost[cData.fuelGrade] * data->dispensedVolume));
 
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
-	printf("Credit Card: %lld\n", cData.creditCard);
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
-	printf("Requested Vol.: %3.1f\n", cData.requestedVolume);
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
-	printf("Dispensed Vol.: %3.1f\n", data->dispensedVolume);
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
-	printf("Fuel Grade: %c\n", (char)('A' + cData.fuelGrade));
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
-	printf("Cost: $%.2f\n", (DBL_GasCost[cData.fuelGrade] * data->dispensedVolume));
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
-	printf("                                   ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
-	// Set the status color
-	TEXT_COLOUR(pumpStatus, 0);
-	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
+	TEXT_COLOUR(data->pumpStatus, 0);
+	MOVE_CURSOR(x, y + 7);	printf("Status: %s\n", ReadStatus(data->pumpStatus).c_str());
 	TEXT_COLOUR(15, 0);
 
 	fflush(stdout);
@@ -124,34 +106,29 @@ void Pump::PrintCustomerDetails(CustomerData &cData) const
 
 void Pump::PrintEmptyDetails() const
 {
+	int x = (pumpNumber % 2) * INT_xCustomerInfo;
+	int y = (pumpNumber / 2) * INT_yCustomerInfo;
+
 	gasStationMutex->Wait();
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth);
-	printf("PUMP %d:                         \n", pumpNumber);
+	MOVE_CURSOR(x, y);		printf("                                 "); fflush(stdout);
+	MOVE_CURSOR(x, y + 1);	printf("                                 "); fflush(stdout);
+	MOVE_CURSOR(x, y + 2);	printf("                                 "); fflush(stdout);
+	MOVE_CURSOR(x, y + 3);	printf("                                 "); fflush(stdout);
+	MOVE_CURSOR(x, y + 4);	printf("                                 "); fflush(stdout);
+	MOVE_CURSOR(x, y + 5);	printf("                                 "); fflush(stdout);
+	MOVE_CURSOR(x, y + 6);	printf("                                 "); fflush(stdout);
+	MOVE_CURSOR(x, y + 7);	printf("                                 "); fflush(stdout);
 
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 1);
-	printf("Customer Name:                   \n");
+	MOVE_CURSOR(x, y);		printf("PUMP %d:                         \n", pumpNumber); fflush(stdout);
+	MOVE_CURSOR(x, y + 1);	printf("Customer Name:                   \n"); fflush(stdout);
+	MOVE_CURSOR(x, y + 2);	printf("Credit Card:                     \n"); fflush(stdout);
+	MOVE_CURSOR(x, y + 3);	printf("Requested Vol.:                  \n"); fflush(stdout);
+	MOVE_CURSOR(x, y + 4);	printf("Dispensed Vol.:                  \n"); fflush(stdout);
+	MOVE_CURSOR(x, y + 5);	printf("Fuel Grade:                      \n"); fflush(stdout);
+	MOVE_CURSOR(x, y + 6);	printf("Cost:                            \n"); fflush(stdout);
 
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 2);
-	printf("Credit Card:                     \n");
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 3);
-	printf("Requested Vol.:                   \n");
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 4);
-	printf("Dispensed Vol.:                   \n");
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 5);
-	printf("Fuel Grade:                       \n");
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 6);
-	printf("Cost:                             \n");
-
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
-	printf("                                      ");
-	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
-	// Set the status color
-	TEXT_COLOUR(pumpStatus, 0);
-	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
+	TEXT_COLOUR(data->pumpStatus, 0);
+	MOVE_CURSOR(x, y + 7);	printf("Status: %s\n", ReadStatus(data->pumpStatus).c_str());
 	TEXT_COLOUR(15, 0);
 
 	fflush(stdout);
@@ -224,7 +201,7 @@ int Pump::main()
 {
 	while (1)
 	{
-		pumpStatus = INT_WaitingCustomerStatus;
+		data->pumpStatus = INT_WaitingCustomerStatus;
 		PrintEmptyDetails();
 
 		struct CustomerData cData;
@@ -233,16 +210,16 @@ int Pump::main()
 
 		LogMessage(string("Waiting for authorization").c_str(), 21);
 
-		pumpStatus = INT_WaitingAuthorizationStatus;
+		data->pumpStatus = INT_WaitingAuthorizationStatus;
 		PrintCustomerDetails(cData);
 		StartTransaction(cData);
 		WaitForAuthorizationFromGSC(cData);
 
-		pumpStatus = INT_WaitingForFuelTankStationStatus;
+		data->pumpStatus = INT_WaitingForFuelTankStationStatus;
 		PrintCustomerDetails(cData);
 		WaitUntilGasStationReady();
 
-		pumpStatus = INT_DispensingGas;
+		data->pumpStatus = INT_DispensingGas;
 		DispenseFuelUntilComplete(cData);
 
 		LogMessage(string("Releasing mutex for next customer").c_str());

@@ -18,8 +18,8 @@ private:
 
 	const int INT_LineNumber = 19;
 
-	const int INT_xCustomerInfoWidth = 35;
-	const int INT_yCustomerInfoWidth = 9;
+	const int INT_xCustomerInfo = 35;
+	const int INT_yCustomerInfo = 9;
 	const double DBL_GasFlowRate = 0.5;
 
 	//Status constants
@@ -38,7 +38,6 @@ private:
 	CSemaphore *cs;
 
 	int pumpNumber;
-	int pumpStatus;
 
 	int main() override;
 	void Initialize();
