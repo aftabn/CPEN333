@@ -4,12 +4,12 @@
 #include "..\..\rt.h"
 #include "FuelTankStation.h"
 
-const int INT_NumPumps = 1;
+const int INT_NumPumps = 4;
 const int INT_xCustomerInfoWidth = 35;
 const int INT_yCustomerInfoWidth = 8;
 
 bool isPumpAuthorized[INT_NumPumps];
-bool needPumpAuthorization[INT_NumPumps];
+bool isCustomerDone[INT_NumPumps];
 
 FuelTankStation fuelTankStation;
 CMutex mutex(string("__Mutex__") + string("GSC"));
@@ -76,7 +76,6 @@ void PrintPumpDetails(double dispensedVolume, int pumpNumber)
 void AlertGSCForAuthorization(int num)
 {
 	mutex.Wait();
-	needPumpAuthorization[num] = true;
 	printf("Pump %d needs authorization.\n", num);
 	fflush(stdout);
 	mutex.Signal();
@@ -105,10 +104,13 @@ UINT __stdcall PumpThread(void *args)	// thread function
 		WaitForGSCAuthorization(threadPumpNumber);
 		cSemaphores[threadPumpNumber]->Signal();
 
-		while (!gpData[threadPumpNumber]->isDone)
+		isCustomerDone[threadPumpNumber] = false;
+
+		while (!isCustomerDone[threadPumpNumber])
 		{
 			pSemaphores[threadPumpNumber]->Wait();
 			PrintPumpDetails(gpData[threadPumpNumber]->dispensedVolume, threadPumpNumber);
+			if (gpData[threadPumpNumber]->isDone) isCustomerDone[threadPumpNumber] = true;
 			cSemaphores[threadPumpNumber]->Signal();
 		}
 
@@ -138,7 +140,6 @@ void ProcessCommand()
 		printf("Authorizing pump %d\n", pump);
 		mutex.Signal();
 
-		needPumpAuthorization[pump] = false;
 		isPumpAuthorized[pump] = true;
 	}
 	else
@@ -154,7 +155,7 @@ void Initialize(int threadNums[], CThread *threads[])
 	for (int i = 0; i < INT_NumPumps; i++)
 	{
 		isPumpAuthorized[i] = false;
-		needPumpAuthorization[i] = false;
+		isCustomerDone[i] = false;
 
 		pSemaphores[i] = new CSemaphore(string("PS") + to_string(i), 0, 1);
 		cSemaphores[i] = new CSemaphore(string("CS") + to_string(i), 1, 1);

@@ -7,7 +7,7 @@
 #include <queue>
 #include "../GasStationComputer/FuelTankStation.h"
 
-const int INT_NumPumps = 1;
+const int INT_NumPumps = 4;
 
 FuelTankStation *fuelTankStation;
 CMutex mutex(string("__Mutex__") + string("GasStation"));
