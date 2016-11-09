@@ -23,10 +23,10 @@ private:
 	const double DBL_GasFlowRate = 0.5;
 
 	//Status constants
-	static const int INT_WaitingCustomerStatus = 1;
-	static const int INT_WaitingAuthorizationStatus = 2;
-	static const int INT_WaitingForFuelTankStationStatus = 3;
-	static const int INT_DispensingGas = 4;
+	static const int INT_WaitingCustomerStatus = 6;				// Yellow
+	static const int INT_WaitingAuthorizationStatus = 12;		// Red
+	static const int INT_WaitingForFuelTankStationStatus = 14;	// Yellow
+	static const int INT_DispensingGas = 10;					// Green
 
 	FuelTankStation *fuelTankStation;
 	CTypedPipe<CustomerData> *pipe;

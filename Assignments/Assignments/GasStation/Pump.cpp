@@ -111,9 +111,12 @@ void Pump::PrintCustomerDetails(CustomerData &cData) const
 	printf("Cost: $%.2f\n", (DBL_GasCost[cData.fuelGrade] * data->dispensedVolume));
 
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
-	printf("                                     ");
+	printf("                                   ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
+	// Set the status color
+	TEXT_COLOUR(pumpStatus, 0);
 	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
+	TEXT_COLOUR(15, 0);
 
 	fflush(stdout);
 	gasStationMutex->Signal();
@@ -146,7 +149,10 @@ void Pump::PrintEmptyDetails() const
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
 	printf("                                      ");
 	MOVE_CURSOR((pumpNumber % 2) * INT_xCustomerInfoWidth, (pumpNumber / 2) * INT_yCustomerInfoWidth + 7);
+	// Set the status color
+	TEXT_COLOUR(pumpStatus, 0);
 	printf("Status: %s\n", ReadStatus(pumpStatus).c_str());
+	TEXT_COLOUR(15, 0);
 
 	fflush(stdout);
 	gasStationMutex->Signal();

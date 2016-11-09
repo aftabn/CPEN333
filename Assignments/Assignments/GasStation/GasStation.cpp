@@ -28,6 +28,8 @@ void LogMessage(char const *message)
 
 void Initialize()
 {
+	CURSOR_OFF();
+
 	FuelTankStation *fuelTankStation = new FuelTankStation();
 
 	for (int i = 0; i < INT_NumPumps; i++)
