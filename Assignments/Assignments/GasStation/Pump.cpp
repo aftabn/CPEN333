@@ -7,13 +7,13 @@ struct GasPumpData
 	long long creditCard;
 	int fuelGrade;
 	double dispensedVolume;
+	double totalCost;
 	int pumpStatus;
 	bool isAuthorized;
 	bool isDone;
+	bool isEnabled;
 	char customerName[];
 };
-
-const double Pump::DBL_GasCost[] = { 0.98, 1.02, 1.10, 1.25 };
 
 void Pump::LogMessage(char const *message, int line) const
 {
@@ -70,6 +70,8 @@ void Pump::Initialize()
 	data = (struct GasPumpData *)(dp->LinkDataPool());
 
 	data->pumpStatus = INT_WaitingCustomerStatus;
+	transactionCost = 0;
+
 	PrintEmptyDetails();
 }
 
@@ -77,6 +79,8 @@ void Pump::PrintCustomerDetails(CustomerData &cData) const
 {
 	int x = (pumpNumber % 2) * INT_xCustomerInfo;
 	int y = (pumpNumber / 2) * INT_yCustomerInfo;
+
+	int grade = fuelTankStation->GetOctaneGrade(cData.fuelGrade);
 
 	gasStationMutex->Wait();
 	MOVE_CURSOR(x, y);		printf("                                 ");
@@ -93,8 +97,8 @@ void Pump::PrintCustomerDetails(CustomerData &cData) const
 	MOVE_CURSOR(x, y + 2);	printf("Credit Card: %lld\n", cData.creditCard);
 	MOVE_CURSOR(x, y + 3);	printf("Requested Vol.: %3.1f\n", cData.requestedVolume);
 	MOVE_CURSOR(x, y + 4);	printf("Dispensed Vol.: %3.1f\n", data->dispensedVolume);
-	MOVE_CURSOR(x, y + 5);	printf("Fuel Grade: %c\n", (char)('A' + cData.fuelGrade));
-	MOVE_CURSOR(x, y + 6);	printf("Cost: $%.2f\n", (DBL_GasCost[cData.fuelGrade] * data->dispensedVolume));
+	MOVE_CURSOR(x, y + 5);	printf("Fuel Grade: Octane %d\n", grade);
+	MOVE_CURSOR(x, y + 6);	printf("Cost: $%.2f\n", transactionCost * data->dispensedVolume);
 
 	TEXT_COLOUR(data->pumpStatus, 0);
 	MOVE_CURSOR(x, y + 7);	printf("Status: %s\n", ReadStatus(data->pumpStatus).c_str());
@@ -135,7 +139,7 @@ void Pump::PrintEmptyDetails() const
 	gasStationMutex->Signal();
 }
 
-void Pump::StartTransaction(CustomerData &cData) const
+void Pump::StartTransaction(CustomerData &cData)
 {
 	// Wait until allowed to send details
 	cs->Wait();
@@ -143,8 +147,10 @@ void Pump::StartTransaction(CustomerData &cData) const
 	strcpy_s(data->customerName, 30, cData.customerName.c_str());
 	data->fuelGrade = cData.fuelGrade;
 	data->dispensedVolume = 0;
+	data->totalCost = 0;
 	data->isAuthorized = false;
 	data->isDone = false;
+	transactionCost = fuelTankStation->GetGasCost(cData.fuelGrade);
 	ps->Signal();
 }
 

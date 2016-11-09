@@ -13,11 +13,14 @@ FuelTankStation::FuelTankStation()
 
 void FuelTankStation::Initialize()
 {
+	const double DBL_GasCost[] = { 0.98, 1.02, 1.10, 1.25 };
+
 	for (int i = 0; i < INT_NumTanks; i++)
 	{
 		mutex[i]->Wait();
 		data[i]->gasTankLevel = INT_MaxTankLevel;
 		data[i]->tankStatus = INT_FuelTankOkStatus;
+		data[i]->gasCost = DBL_GasCost[i];
 		mutex[i]->Signal();
 	}
 }
@@ -91,4 +94,16 @@ int FuelTankStation::GetStatusNumber(int gasType) const
 int FuelTankStation::GetOctaneGrade(int gasType) const
 {
 	return INT_OctaneGrade[gasType];
+}
+
+void FuelTankStation::setGasCost(int gasType, double gasCost)
+{
+	mutex[gasType]->Wait();
+	data[gasType]->gasCost = gasCost;
+	mutex[gasType]->Signal();
+}
+
+double FuelTankStation::GetGasCost(int gasType) const
+{
+	return data[gasType]->gasCost;
 }

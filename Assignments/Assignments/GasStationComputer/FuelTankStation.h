@@ -6,6 +6,8 @@ class FuelTankStation {
 	{
 		double gasTankLevel;
 		int tankStatus;
+		double gasCost;
+
 	};
 
 private:
@@ -18,6 +20,7 @@ private:
 	static const int INT_FuelTankRefillingStatus = 2;	// Dark Green
 	static const int INT_FuelTankLowStatus = 6;			// Yellow
 	static const int INT_FuelTankEmptyStatus = 12;		// Red
+
 
 	const int INT_OctaneGrade[INT_NumTanks] = { 87, 89, 92, 93 };
 
@@ -36,4 +39,6 @@ public:
 	int GetStatusNumber(int gasType) const;
 	string GetStatus(int gasType) const;
 	int GetOctaneGrade(int gasType) const;
+	void setGasCost(int gasType, double gasCost);
+	double FuelTankStation::GetGasCost(int gasType) const;
 };

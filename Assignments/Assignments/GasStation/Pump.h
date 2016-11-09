@@ -14,13 +14,12 @@ class Pump :
 	};
 
 private:
-	static const double DBL_GasCost[4];
 
 	const int INT_LineNumber = 19;
 
 	const int INT_xCustomerInfo = 35;
 	const int INT_yCustomerInfo = 9;
-	const double DBL_GasFlowRate = 5;
+	const double DBL_GasFlowRate = 10;
 
 	//Status constants
 	static const int INT_WaitingCustomerStatus = 6;				// Yellow
@@ -38,13 +37,14 @@ private:
 	CSemaphore *cs;
 
 	int pumpNumber;
+	double transactionCost;
 
 	int main() override;
 	void Initialize();
 
 	void PrintEmptyDetails() const;
 	void PrintCustomerDetails(struct CustomerData &cData) const;
-	void StartTransaction(struct CustomerData &cData) const;
+	void StartTransaction(struct CustomerData &cData);
 	void WaitForAuthorizationFromGSC(struct CustomerData &cData) const;
 	void WaitUntilGasStationReady() const;
 	void DispenseFuelUntilComplete(struct CustomerData &cData) const;

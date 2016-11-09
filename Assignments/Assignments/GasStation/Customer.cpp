@@ -112,5 +112,6 @@ int Customer::CreateRandomFuelGrade()
 
 double Customer::CreateRandomRequestedVolume()
 {
-	return rand() % 61 + 100;
+	//return rand() % 61 + 100;
+	return 100;
 }
