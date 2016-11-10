@@ -47,6 +47,7 @@ void CreateNewCustomer()
 	pumpQueue.push(customer);
 
 	string message = "Queue Size: " + to_string(pumpQueue.size());
+
 	LogMessage(message.c_str());
 }
 
@@ -80,7 +81,8 @@ void AssignNewCustomers()
 			customer->AssignToPump(i);
 			customer->Resume();
 
-			string message = "Queue Size: " + to_string(pumpQueue.size());
+			string message = "Queue Size: " + to_string(pumpQueue.size()) + " ";
+
 			LogMessage(message.c_str());
 
 			if (pumpQueue.size() == 0) return;

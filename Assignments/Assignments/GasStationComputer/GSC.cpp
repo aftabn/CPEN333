@@ -187,7 +187,7 @@ void PrintPumpDetails(int pumpNumber)
 void PrintFuelTankDetails()
 {
 	int x = INT_xFuelTankInfo;
-	int y = INT_yFuelTankInfo;
+	int y = INT_yFuelTankInfo + INT_yOffset;
 
 	mutex.Wait();
 	CURSOR_OFF();
@@ -394,7 +394,16 @@ void processCommand(char *command)
 	}
 	else if (0 == _stricmp(command, "A"))
 	{
-		if (isPumpNumberCorrect(gParameters[0]))
+		if (0 == _stricmp(gParameters[0], "ALL"))
+		{
+			for (int i = 0; i < INT_NumPumps; i++)
+			{
+				isPumpAuthorized[i] = true;
+			}
+
+			SuccessMessage("Authorized all pumps");
+		}
+		else if (isPumpNumberCorrect(gParameters[0]))
 		{
 			int pump = atoi(gParameters[0]);
 			isPumpAuthorized[pump] = true;
@@ -407,7 +416,16 @@ void processCommand(char *command)
 	}
 	else if (0 == _stricmp(command, "E"))
 	{
-		if (isPumpNumberCorrect(gParameters[0]))
+		if (0 == _stricmp(gParameters[0], "ALL"))
+		{
+			for (int i = 0; i < INT_NumPumps; i++)
+			{
+				isPumpEnabled[i] = true;
+			}
+
+			SuccessMessage("Enabled all pumps");
+		}
+		else if (isPumpNumberCorrect(gParameters[0]))
 		{
 			int pump = atoi(gParameters[0]);
 			isPumpEnabled[pump] = true;
@@ -420,6 +438,15 @@ void processCommand(char *command)
 	}
 	else if (0 == _stricmp(command, "D"))
 	{
+		if (0 == _stricmp(gParameters[0], "ALL"))
+		{
+			for (int i = 0; i < INT_NumPumps; i++)
+			{
+				isPumpEnabled[i] = false;
+			}
+
+			SuccessMessage("Disabled all pumps");
+		}
 		if (isPumpNumberCorrect(gParameters[0]))
 		{
 			int pump = atoi(gParameters[0]);
