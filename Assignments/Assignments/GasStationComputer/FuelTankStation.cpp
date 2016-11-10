@@ -27,7 +27,7 @@ void FuelTankStation::Initialize()
 
 double FuelTankStation::WithdrawGas(double amount, int gasType)
 {
-	int gas = 0;
+	double gas = 0;
 
 	mutex[gasType]->Wait();
 

@@ -71,7 +71,7 @@ void AssignNewCustomers()
 
 	for (int i = 0; i < INT_NumPumps; i++)
 	{
-		if (activeCustomers[i] == nullptr)
+		if (activeCustomers[i] == nullptr && pumps[i]->IsEnabled())
 		{
 			Customer *customer = pumpQueue.front();
 

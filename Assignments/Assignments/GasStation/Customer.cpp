@@ -28,7 +28,7 @@ int Customer::main()
 	CTypedPipe<CustomerData> pipe(string("Pipe") + to_string(pumpNumber), 1024);
 
 	mutex.Wait();
-	
+
 	// Create customer data struct and then send off data
 	struct CustomerData data;
 	data.creditCard = this->creditCard;
@@ -109,6 +109,5 @@ int Customer::CreateRandomFuelGrade()
 
 double Customer::CreateRandomRequestedVolume()
 {
-	//return rand() % 61 + 100;
-	return 100;
+	return rand() % 61 + 10;
 }

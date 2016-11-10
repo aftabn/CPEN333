@@ -33,6 +33,7 @@ string Pump::ReadStatus(int status) const
 	case INT_WaitingCustomerStatus: return "Waiting for Customer";
 	case INT_WaitingAuthorizationStatus: return "Waiting for Authorization";
 	case INT_WaitingForFuelTankStationStatus: return "Waiting for Fuel";
+	case INT_PumpDisabledStatus: return "Pump Disabled";
 	case INT_DispensingGas: return "Dispensing Gas";
 	default: return "Error";
 	}
@@ -139,6 +140,11 @@ void Pump::PrintEmptyDetails() const
 	gasStationMutex->Signal();
 }
 
+bool Pump::IsEnabled() const
+{
+	return data->isEnabled;
+}
+
 void Pump::StartTransaction(CustomerData &cData)
 {
 	// Wait until allowed to send details
@@ -156,7 +162,6 @@ void Pump::StartTransaction(CustomerData &cData)
 
 void Pump::WaitForAuthorizationFromGSC(CustomerData &cData) const
 {
-	//LogMessage(string("Waiting for authorization").c_str());
 	PrintCustomerDetails(cData);
 	cs->Wait();
 
@@ -166,8 +171,6 @@ void Pump::WaitForAuthorizationFromGSC(CustomerData &cData) const
 
 void Pump::WaitUntilGasStationReady() const
 {
-	//LogMessage(string("Waiting for gas to be ready").c_str());
-
 	while (fuelTankStation->GetGas(data->fuelGrade) < 200)
 	{
 		SLEEP(200);
@@ -176,8 +179,6 @@ void Pump::WaitUntilGasStationReady() const
 
 void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 {
-	//LogMessage(string("Starting dispensing").c_str());
-
 	while (fuelTankStation->GetGas(data->fuelGrade) > 0 && data->dispensedVolume < cData.requestedVolume)
 	{
 		data->dispensedVolume += fuelTankStation->WithdrawGas(DBL_GasFlowRate, data->fuelGrade);
@@ -195,8 +196,7 @@ void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 		SLEEP(1000);
 	}
 
-	//LogMessage(string("Finished Dispensing").c_str());
-
+	// Signal GSC to say we're done transaction
 	ps->Signal();
 }
 
@@ -208,6 +208,15 @@ int Pump::main()
 		PrintEmptyDetails();
 
 		struct CustomerData cData;
+
+		// While (Disabled OR No data arrived)
+		while (!IsEnabled() || pipe->TestForData() == 0)
+		{
+			data->pumpStatus = !IsEnabled() ? INT_PumpDisabledStatus : INT_WaitingCustomerStatus;
+			PrintEmptyDetails();
+			SLEEP(100);
+		}
+
 		pipe->Read(&cData);
 		pumpMutex->Wait();
 

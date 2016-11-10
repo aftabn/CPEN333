@@ -34,6 +34,7 @@ PerThreadStorage int threadPumpNumber;
 
 bool isPumpAuthorized[INT_NumPumps];
 bool isCustomerDone[INT_NumPumps];
+bool isPumpEnabled[INT_NumPumps];
 
 // Command line buffers and constants
 const int INT_LineSizeMax = 20;
@@ -45,6 +46,7 @@ char lineBuffer[INT_LineSizeMax + 1];
 vector<Transaction*> transactions;
 
 //Pump status constants
+static const int INT_PumpDisabledStatus = 7;				// Gray
 static const int INT_WaitingCustomerStatus = 6;				// Dark Yellow
 static const int INT_WaitingAuthorizationStatus = 12;		// Red
 static const int INT_WaitingForFuelTankStationStatus = 14;	// Yellow
@@ -80,6 +82,7 @@ string ReadPumpStatus(int status)
 	case INT_WaitingCustomerStatus: return "Waiting for Customer";
 	case INT_WaitingAuthorizationStatus: return "Waiting for Authorization";
 	case INT_WaitingForFuelTankStationStatus: return "Waiting for Fuel";
+	case INT_PumpDisabledStatus: return "Pump Disabled";
 	case INT_DispensingGas: return "Dispensing Gas";
 	default: return "Error";
 	}
@@ -214,7 +217,7 @@ void PrintTransactions()
 		MOVE_CURSOR(x, y + 4 + i*INT_TransactionBlockHeight);	printf("Credit Card: %lld\n", transactions[i]->CreditCard); fflush(stdout);
 		MOVE_CURSOR(x, y + 5 + i*INT_TransactionBlockHeight);	printf("Fuel Grade: Octane %d\n", transactions[i]->FuelGrade); fflush(stdout);
 		MOVE_CURSOR(x, y + 6 + i*INT_TransactionBlockHeight);	printf("Dispensed Vol.: %.1f\n", transactions[i]->DispensedFuel); fflush(stdout);
-		MOVE_CURSOR(x, y + 7 + i*INT_TransactionBlockHeight);	printf("Total Cost: %.2f\n", transactions[i]->TotalCost); fflush(stdout);
+		MOVE_CURSOR(x, y + 7 + i*INT_TransactionBlockHeight);	printf("Total Cost: $%.2f\n", transactions[i]->TotalCost); fflush(stdout);
 	}
 
 	MOVE_CURSOR(0, INT_ConsoleInputLine);
@@ -238,6 +241,19 @@ void CreateTransaction(int num)
 	transactions.push_back(transaction);
 }
 
+void WaitUntilPumpIsEnabled(int num)
+{
+	// While (Disabled OR No transaction started)
+	while (!isPumpEnabled[num] || pSemaphores[threadPumpNumber]->Read() == 0)
+	{
+		gpData[num]->isEnabled = isPumpEnabled[num];
+		PrintEmptyPumpDetails(num);
+		SLEEP(100);
+	}
+
+	PrintEmptyPumpDetails(num);
+}
+
 UINT __stdcall PumpThread(void *args)	// thread function
 {
 	threadPumpNumber = *(int *)(args);
@@ -245,6 +261,8 @@ UINT __stdcall PumpThread(void *args)	// thread function
 	while (1)
 	{
 		PrintEmptyPumpDetails(threadPumpNumber);
+		WaitUntilPumpIsEnabled(threadPumpNumber);
+
 		pSemaphores[threadPumpNumber]->Wait();
 		PrintPumpDetails(threadPumpNumber);
 		WaitForGSCAuthorization(threadPumpNumber);
@@ -274,22 +292,6 @@ UINT __stdcall PumpThread(void *args)	// thread function
 	}
 
 	return 0;
-}
-
-bool isFuelTankNumberCorrect(char *tankArg)
-{
-	char str[10];
-
-	for (int tank = 0; tank < INT_NumFuelTanks; tank++)
-	{
-		sprintf(str, "%d", tank);
-		if (0 == _stricmp(tankArg, str))
-		{
-			return true;
-		}
-	}
-
-	return false;
 }
 
 bool isPumpNumberCorrect(char *pumpArg)
@@ -337,8 +339,10 @@ void processCommand(char *command)
 				LogMessage("Gas cost needs to be between $0-20 per liter");
 			}
 		}
-
-		LogMessage("Invalid pump number");
+		else
+		{
+			LogMessage("Invalid pump number");
+		}
 	}
 	else if (0 == _stricmp(command, "A"))
 	{
@@ -347,30 +351,34 @@ void processCommand(char *command)
 			int pump = atoi(gParameters[0]);
 			isPumpAuthorized[pump] = true;
 		}
-
-		LogMessage("Invalid pump number");
+		else
+		{
+			LogMessage("Invalid pump number");
+		}
 	}
 	else if (0 == _stricmp(command, "E"))
 	{
 		if (isPumpNumberCorrect(gParameters[0]))
 		{
 			int pump = atoi(gParameters[0]);
-
-			// Enable pump here
+			isPumpEnabled[pump] = true;
 		}
-
-		LogMessage("Invalid pump number");
+		else
+		{
+			LogMessage("Invalid pump number");
+		}
 	}
 	else if (0 == _stricmp(command, "D"))
 	{
 		if (isPumpNumberCorrect(gParameters[0]))
 		{
 			int pump = atoi(gParameters[0]);
-
-			// Disable pump
+			isPumpEnabled[pump] = false;
 		}
-
-		LogMessage("Invalid pump number");
+		else
+		{
+			LogMessage("Invalid pump number");
+		}
 	}
 	else if (0 == _stricmp(command, "TRANS"))
 	{
@@ -528,6 +536,7 @@ void Initialize(int threadNums[], CThread *threads[])
 	{
 		isPumpAuthorized[i] = false;
 		isCustomerDone[i] = false;
+		isPumpEnabled[i] = true;
 
 		pSemaphores[i] = new CSemaphore(string("PS") + to_string(i), 0, 1);
 		cSemaphores[i] = new CSemaphore(string("CS") + to_string(i), 1, 1);

@@ -19,9 +19,10 @@ private:
 
 	const int INT_xCustomerInfo = 35;
 	const int INT_yCustomerInfo = 9;
-	const double DBL_GasFlowRate = 10;
+	const double DBL_GasFlowRate = 5;
 
 	//Status constants
+	static const int INT_PumpDisabledStatus = 7;				// Gray
 	static const int INT_WaitingCustomerStatus = 6;				// Yellow
 	static const int INT_WaitingAuthorizationStatus = 12;		// Red
 	static const int INT_WaitingForFuelTankStationStatus = 14;	// Yellow
@@ -56,4 +57,6 @@ private:
 public:
 	Pump(int num, FuelTankStation *fuelTankStation);
 	~Pump();
+
+	bool IsEnabled() const;
 };
