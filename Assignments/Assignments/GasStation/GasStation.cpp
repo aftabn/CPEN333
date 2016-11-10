@@ -7,7 +7,7 @@
 #include <queue>
 #include "../GasStationComputer/FuelTankStation.h"
 
-const int INT_NumPumps = 4;
+const int INT_NumPumps = 8;
 
 FuelTankStation *fuelTankStation;
 CMutex mutex(string("__Mutex__") + string("GasStation"));
@@ -18,9 +18,9 @@ queue<Customer*> pumpQueue;
 void LogMessage(char const *message)
 {
 	mutex.Wait();
-	MOVE_CURSOR(0, 18);
+	MOVE_CURSOR(0, 2);
 	printf("                                                                  \n");
-	MOVE_CURSOR(0, 18);
+	MOVE_CURSOR(0, 2);
 	printf("GS: %s\n", message);
 	fflush(stdout);
 	mutex.Signal();

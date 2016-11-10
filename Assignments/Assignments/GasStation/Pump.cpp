@@ -79,7 +79,7 @@ void Pump::Initialize()
 void Pump::PrintCustomerDetails(CustomerData &cData) const
 {
 	int x = (pumpNumber % 2) * INT_xCustomerInfo;
-	int y = (pumpNumber / 2) * INT_yCustomerInfo;
+	int y = (pumpNumber / 2) * INT_yCustomerInfo + INT_yOffset;
 
 	int grade = fuelTankStation->GetOctaneGrade(cData.fuelGrade);
 
@@ -112,7 +112,7 @@ void Pump::PrintCustomerDetails(CustomerData &cData) const
 void Pump::PrintEmptyDetails() const
 {
 	int x = (pumpNumber % 2) * INT_xCustomerInfo;
-	int y = (pumpNumber / 2) * INT_yCustomerInfo;
+	int y = (pumpNumber / 2) * INT_yCustomerInfo + INT_yOffset;
 
 	gasStationMutex->Wait();
 	MOVE_CURSOR(x, y);		printf("                                 "); fflush(stdout);

@@ -10,18 +10,19 @@
 #include "Transaction.h"
 #include <vector>
 
-const int INT_NumPumps = 4;
+const int INT_NumPumps = 8;
 const int INT_NumFuelTanks = 4;
 
 const int INT_xCustomerInfo = 35;
 const int INT_yCustomerInfo = 8;
+const int INT_yOffset = 6;
 const int INT_xFuelTankInfo = 70;
-const int INT_yFuelTankInfo = 0;
+const int INT_yFuelTankInfo = 6;
 const int INT_xTransactionInfo = 70;
 const int INT_yTransactionInfo = 8;
 
-const int INT_ConsoleOutputLine = 15;
-const int INT_ConsoleInputLine = 16;
+const int INT_ConsoleOutputLine = 2;
+const int INT_ConsoleInputLine = 4;
 
 bool isFlash = true;
 int flashCounter = 0;
@@ -68,6 +69,16 @@ struct GasPumpData
 	char customerName[];
 };
 
+void LogMessage(char const *message)
+{
+	mutex.Wait();
+	MOVE_CURSOR(0, INT_ConsoleOutputLine + 1); printf("                                   \n"); fflush(stdout);
+	MOVE_CURSOR(0, INT_ConsoleOutputLine + 1); printf("> %s\n", message); fflush(stdout);
+	mutex.Signal();
+
+	MOVE_CURSOR(0, INT_ConsoleInputLine);
+}
+
 void ErrorMessage(char const *message)
 {
 	Beep(400, 500);
@@ -111,7 +122,7 @@ string ReadPumpStatus(int status)
 void PrintEmptyPumpDetails(int pumpNumber)
 {
 	int x = (pumpNumber % 2) * INT_xCustomerInfo;
-	int y = (pumpNumber / 2) * INT_yCustomerInfo;
+	int y = (pumpNumber / 2) * INT_yCustomerInfo + INT_yOffset;
 
 	int pumpStatus = gpData[pumpNumber]->pumpStatus;
 
@@ -142,7 +153,7 @@ void PrintEmptyPumpDetails(int pumpNumber)
 void PrintPumpDetails(int pumpNumber)
 {
 	int x = (pumpNumber % 2) * INT_xCustomerInfo;
-	int y = (pumpNumber / 2) * INT_yCustomerInfo;
+	int y = (pumpNumber / 2) * INT_yCustomerInfo + INT_yOffset;
 
 	string name = gpData[pumpNumber]->customerName;
 	int pumpStatus = gpData[pumpNumber]->pumpStatus;
@@ -556,6 +567,7 @@ void ScanKeyboard()
 					lineBuffer[linePointer] = 0;
 					linePointer = 0;
 					sprintf_s(tmpstr, INT_LineSizeMax, "%s", lineBuffer);
+					LogMessage(tmpstr);
 					processLine(lineBuffer);
 				}
 				else // Store any other characters in the buffer
