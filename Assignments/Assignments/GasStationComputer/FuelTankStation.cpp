@@ -44,6 +44,11 @@ double FuelTankStation::WithdrawGas(double amount, int gasType)
 		data[gasType]->tankStatus = INT_FuelTankLowStatus;
 	}
 
+	if (data[gasType]->gasTankLevel == 0)
+	{
+		data[gasType]->tankStatus = INT_FuelTankEmptyStatus;
+	}
+
 	mutex[gasType]->Signal();
 
 	return gas;

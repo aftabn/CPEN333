@@ -21,7 +21,10 @@ const int INT_xTransactionInfo = 70;
 const int INT_yTransactionInfo = 8;
 
 const int INT_ConsoleOutputLine = 15;
-const int INT_ConsoleInputLine = 17;
+const int INT_ConsoleInputLine = 16;
+
+bool isFlash = true;
+int flashCounter = 0;
 
 FuelTankStation fuelTankStation;
 CMutex mutex(string("__Mutex__") + string("GSC"));
@@ -65,11 +68,28 @@ struct GasPumpData
 	char customerName[];
 };
 
-void LogMessage(char const *message)
+void ErrorMessage(char const *message)
 {
+	Beep(400, 500);
 	mutex.Wait();
+	TEXT_COLOUR(12, 0);
 	MOVE_CURSOR(0, INT_ConsoleOutputLine); printf("                                   \n"); fflush(stdout);
 	MOVE_CURSOR(0, INT_ConsoleOutputLine); printf("GSC: %s\n", message); fflush(stdout);
+	TEXT_COLOUR(15, 0);
+	mutex.Signal();
+
+	MOVE_CURSOR(0, INT_ConsoleInputLine);
+}
+
+void SuccessMessage(char const *message)
+{
+	Beep(700, 300);
+
+	mutex.Wait();
+	TEXT_COLOUR(11, 0);
+	MOVE_CURSOR(0, INT_ConsoleOutputLine); printf("                                   \n"); fflush(stdout);
+	MOVE_CURSOR(0, INT_ConsoleOutputLine); printf("GSC: %s\n", message); fflush(stdout);
+	TEXT_COLOUR(15, 0);
 	mutex.Signal();
 
 	MOVE_CURSOR(0, INT_ConsoleInputLine);
@@ -96,6 +116,7 @@ void PrintEmptyPumpDetails(int pumpNumber)
 	int pumpStatus = gpData[pumpNumber]->pumpStatus;
 
 	mutex.Wait();
+	CURSOR_OFF();
 	MOVE_CURSOR(x, y);		printf("                                   "); fflush(stdout);
 	MOVE_CURSOR(x, y + 1);	printf("                                   "); fflush(stdout);
 	MOVE_CURSOR(x, y + 2);	printf("                                   "); fflush(stdout);
@@ -114,6 +135,7 @@ void PrintEmptyPumpDetails(int pumpNumber)
 	TEXT_COLOUR(15, 0);
 
 	MOVE_CURSOR(0, INT_ConsoleInputLine);
+	CURSOR_ON();
 	mutex.Signal();
 }
 
@@ -128,6 +150,7 @@ void PrintPumpDetails(int pumpNumber)
 	int grade = fuelTankStation.GetOctaneGrade(gpData[pumpNumber]->fuelGrade);
 
 	mutex.Wait();
+	CURSOR_OFF();
 	MOVE_CURSOR(x, y);		printf("                                   "); fflush(stdout);
 	MOVE_CURSOR(x, y + 1);	printf("                                   "); fflush(stdout);
 	MOVE_CURSOR(x, y + 2);	printf("                                   "); fflush(stdout);
@@ -146,6 +169,7 @@ void PrintPumpDetails(int pumpNumber)
 	TEXT_COLOUR(15, 0);
 
 	MOVE_CURSOR(0, INT_ConsoleInputLine);
+	CURSOR_ON();
 	mutex.Signal();
 }
 
@@ -155,6 +179,7 @@ void PrintFuelTankDetails()
 	int y = INT_yFuelTankInfo;
 
 	mutex.Wait();
+	CURSOR_OFF();
 	MOVE_CURSOR(x, y);		printf("                                      ");
 	MOVE_CURSOR(x, y + 1);	printf("                                      ");
 	MOVE_CURSOR(x, y + 2);	printf("                                      ");
@@ -169,15 +194,25 @@ void PrintFuelTankDetails()
 		MOVE_CURSOR(x, y + i + 1);
 		printf("Octane %d [$%.2f]: %.1fL ", fuelTankStation.GetOctaneGrade(i),
 			fuelTankStation.GetGasCost(i), fuelTankStation.GetGas(i));
-		TEXT_COLOUR(fuelTankStation.GetStatusNumber(i), 0);
+
+		int status = fuelTankStation.GetStatusNumber(i);
+
+		//Flashing code
+		if (status == 12)		TEXT_COLOUR(isFlash ? 12 : 4, 0);
+		else if (status == 6)	TEXT_COLOUR(isFlash ? 6 : 14, 0);
+		else					TEXT_COLOUR(status, 0);
+
 		printf("-> %s\n", fuelTankStation.GetStatus(i).c_str());
 		TEXT_COLOUR(15, 0);
 	}
 
 	fflush(stdout);
 
-	MOVE_CURSOR(0, INT_ConsoleOutputLine);
+	MOVE_CURSOR(0, INT_ConsoleInputLine);
+	CURSOR_ON();
 	mutex.Signal();
+
+	isFlash = !isFlash;
 }
 
 void WaitForGSCAuthorization(int num)
@@ -321,6 +356,7 @@ void processCommand(char *command)
 
 	if (0 == _stricmp(command, "RF"))
 	{
+		SuccessMessage("Refilling Fuel Tanks");
 		fuelTankStation.RefillTanks();
 	}
 	else if (0 == _stricmp(command, "C"))
@@ -333,15 +369,16 @@ void processCommand(char *command)
 			if (cost > 0 && cost < 20)
 			{
 				fuelTankStation.setGasCost(pump, cost);
+				SuccessMessage(string("Set gas cost to $" + to_string(cost)).c_str());
 			}
 			else
 			{
-				LogMessage("Gas cost needs to be between $0-20 per liter");
+				ErrorMessage("Gas cost needs to be between $0-20 per liter");
 			}
 		}
 		else
 		{
-			LogMessage("Invalid pump number");
+			ErrorMessage("Invalid pump number");
 		}
 	}
 	else if (0 == _stricmp(command, "A"))
@@ -350,10 +387,11 @@ void processCommand(char *command)
 		{
 			int pump = atoi(gParameters[0]);
 			isPumpAuthorized[pump] = true;
+			SuccessMessage(string("Authorized pump " + to_string(pump)).c_str());
 		}
 		else
 		{
-			LogMessage("Invalid pump number");
+			ErrorMessage("Invalid pump number");
 		}
 	}
 	else if (0 == _stricmp(command, "E"))
@@ -362,10 +400,11 @@ void processCommand(char *command)
 		{
 			int pump = atoi(gParameters[0]);
 			isPumpEnabled[pump] = true;
+			SuccessMessage(string("Enabled pump " + to_string(pump)).c_str());
 		}
 		else
 		{
-			LogMessage("Invalid pump number");
+			ErrorMessage("Invalid pump number");
 		}
 	}
 	else if (0 == _stricmp(command, "D"))
@@ -374,17 +413,21 @@ void processCommand(char *command)
 		{
 			int pump = atoi(gParameters[0]);
 			isPumpEnabled[pump] = false;
+			SuccessMessage(string("Disabled pump " + to_string(pump)).c_str());
 		}
 		else
 		{
-			LogMessage("Invalid pump number");
+			ErrorMessage("Invalid pump number");
 		}
 	}
 	else if (0 == _stricmp(command, "TRANS"))
 	{
 		PrintTransactions();
 	}
-
+	else
+	{
+		ErrorMessage("Invalid command");
+	}
 	//if (ch1 == 'R' && ch2 == 'F')
 	//{
 	//	fuelTankStation.RefillTanks();

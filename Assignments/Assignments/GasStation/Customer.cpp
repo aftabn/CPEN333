@@ -84,8 +84,8 @@ long long Customer::CreateRandomCreditCardNumber()
 string Customer::CreateRandomName()
 {
 	//Array of First Names
-	string firstNames[] = { "Harley", "Rahul", "Armin", "Alexander", "Renee",  "Brandon", "Herman", "Evelyn", "Sasha", "Susan", "Monika", "Sophia", "Harish", "Zenia", "Mela", "Cameron", "Mira" };
-	string lastNames[] = { "Shepard", "Bob", "Bobson", "Petersan", "Chang", "Chun", "Chin", "Zhang", "Lee", "Lu", "Liu", "Davan", "Bob", "Peter", "TheGreat" };
+	string firstNames[] = { "Harley", "Rahul", "Armin", "Alexander", "Renee",  "Brandon", "Herman", "Evelyn", "Sasha", "Susan", "Monika", "Sophia", "Harish", "Zenia", "Mela", "Cameron", "Mira", "Anita" };
+	string lastNames[] = { "Shepard", "Bob", "Bobson", "Petersan", "Chang", "Chun", "Chin", "Zhang", "Lee", "Lu", "Liu", "Davan", "Bob", "Peter", "TheGreat", "Ho" };
 
 	//Choosing a random first name and last name
 	srand(time(nullptr));
@@ -109,5 +109,6 @@ int Customer::CreateRandomFuelGrade()
 
 double Customer::CreateRandomRequestedVolume()
 {
-	return rand() % 61 + 10;
+	//return rand() % 61 + 10;
+	return 300;
 }
