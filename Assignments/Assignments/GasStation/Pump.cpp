@@ -186,6 +186,7 @@ void Pump::DispenseFuelUntilComplete(CustomerData &cData) const
 		if (data->dispensedVolume >= cData.requestedVolume || (int)fuelTankStation->GetGas(data->fuelGrade) <= 0)
 		{
 			data->isDone = true;
+			data->totalCost = data->dispensedVolume * transactionCost;
 		}
 
 		ps->Signal();

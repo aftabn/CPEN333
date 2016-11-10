@@ -190,7 +190,7 @@ void WaitForGSCAuthorization(int num)
 
 void PrintTransactions()
 {
-	const int INT_TransactionBlockHeight = 7;
+	const int INT_TransactionBlockHeight = 8;
 	int x = INT_xTransactionInfo;
 	int y = INT_yTransactionInfo;
 
@@ -206,13 +206,15 @@ void PrintTransactions()
 		MOVE_CURSOR(x, y + 4 + i*INT_TransactionBlockHeight);	printf("                                   "); fflush(stdout);
 		MOVE_CURSOR(x, y + 5 + i*INT_TransactionBlockHeight);	printf("                                   "); fflush(stdout);
 		MOVE_CURSOR(x, y + 6 + i*INT_TransactionBlockHeight);	printf("                                   "); fflush(stdout);
+		MOVE_CURSOR(x, y + 7 + i*INT_TransactionBlockHeight);	printf("                                   "); fflush(stdout);
 
 		MOVE_CURSOR(x, y + 1 + i*INT_TransactionBlockHeight);	printf("Transaction #%d:\n", i + 1); fflush(stdout);
 		MOVE_CURSOR(x, y + 2 + i*INT_TransactionBlockHeight);	printf("Purchase Time: %s\n", transactions[i]->PurchaseTime); fflush(stdout);
 		MOVE_CURSOR(x, y + 3 + i*INT_TransactionBlockHeight);	printf("Customer Name: %s\n", transactions[i]->CustomerName); fflush(stdout);
 		MOVE_CURSOR(x, y + 4 + i*INT_TransactionBlockHeight);	printf("Credit Card: %lld\n", transactions[i]->CreditCard); fflush(stdout);
 		MOVE_CURSOR(x, y + 5 + i*INT_TransactionBlockHeight);	printf("Fuel Grade: Octane %d\n", transactions[i]->FuelGrade); fflush(stdout);
-		MOVE_CURSOR(x, y + 6 + i*INT_TransactionBlockHeight);	printf("Dispensed Vol.: %4.1f\n", transactions[i]->DispensedFuel); fflush(stdout);
+		MOVE_CURSOR(x, y + 6 + i*INT_TransactionBlockHeight);	printf("Dispensed Vol.: %.1f\n", transactions[i]->DispensedFuel); fflush(stdout);
+		MOVE_CURSOR(x, y + 7 + i*INT_TransactionBlockHeight);	printf("Total Cost: %.2f\n", transactions[i]->TotalCost); fflush(stdout);
 	}
 
 	MOVE_CURSOR(0, INT_ConsoleInputLine);
@@ -229,7 +231,8 @@ void CreateTransaction(int num)
 		gpData[num]->customerName,
 		gpData[num]->creditCard,
 		fuelTankStation.GetOctaneGrade(gpData[num]->fuelGrade),
-		gpData[num]->dispensedVolume
+		gpData[num]->dispensedVolume,
+		gpData[num]->totalCost
 		);
 
 	transactions.push_back(transaction);
